@@ -1,0 +1,223 @@
+{
+  "run_id": "math-lossdrop-fasttext-qwen15b-pythia160m-n100000-seed20261102",
+  "seeds": [
+    42
+  ],
+  "results": [
+    {
+      "arm": "random",
+      "seed": 42,
+      "prediction_tokens": 3200000000,
+      "math_nll": 3.1506280166067246,
+      "general_nll": 3.2690535948366493,
+      "normalized_answer_accuracy": 0.0,
+      "generation_questions": 4061,
+      "answer_extraction_rate": 0.4993843880817533,
+      "measured_update_hours": 3.781929615973171,
+      "absolute_math_improvement": 0.0,
+      "relative_math_improvement": 0.0
+    },
+    {
+      "arm": "delta_loss",
+      "seed": 42,
+      "prediction_tokens": 3200000000,
+      "math_nll": 3.1174587835389262,
+      "general_nll": 3.3663758451628207,
+      "normalized_answer_accuracy": 0.0002462447672986949,
+      "generation_questions": 4061,
+      "answer_extraction_rate": 0.47500615611918245,
+      "measured_update_hours": 3.725153526015735,
+      "absolute_math_improvement": 0.033169233067798114,
+      "relative_math_improvement": 0.011897135967780793
+    },
+    {
+      "arm": "relative_gain",
+      "seed": 42,
+      "prediction_tokens": 3200000000,
+      "math_nll": 3.2331509943430388,
+      "general_nll": 3.325799358458256,
+      "normalized_answer_accuracy": 0.0004924895345973898,
+      "generation_questions": 4061,
+      "answer_extraction_rate": 0.3713371090864319,
+      "measured_update_hours": 3.6921410148487954,
+      "absolute_math_improvement": -0.08252297773631424,
+      "relative_math_improvement": -0.0261466344637905
+    }
+  ],
+  "paired_contrasts": {
+    "delta_loss": {
+      "absolute": {
+        "mean": 0.033169233067798114,
+        "ci95": [
+          0.02888040069464652,
+          0.03734043333385227
+        ],
+        "bootstrap": "paired problem-group bootstrap conditional on one seed"
+      },
+      "relative": {
+        "mean": 0.011897135967780793,
+        "ci95": [
+          0.010506442908906968,
+          0.013306713508645584
+        ],
+        "bootstrap": "paired problem-group bootstrap conditional on one seed"
+      }
+    },
+    "relative_gain": {
+      "absolute": {
+        "mean": -0.08252297773631424,
+        "ci95": [
+          -0.08657013460421445,
+          -0.07851987713169345
+        ],
+        "bootstrap": "paired problem-group bootstrap conditional on one seed"
+      },
+      "relative": {
+        "mean": -0.0261466344637905,
+        "ci95": [
+          -0.02742567252253355,
+          -0.024882638629956065
+        ],
+        "bootstrap": "paired problem-group bootstrap conditional on one seed"
+      }
+    }
+  },
+  "formal_label_validity": {
+    "unscorable": [],
+    "replacements": [],
+    "rule": "Basic tokenizer validity only, before any teacher forward; reserve documents are disjoint from candidate/general-evaluation pools",
+    "actual_partition_counts": {
+      "label_train": 80909,
+      "label_dev": 9221,
+      "label_test": 9870
+    }
+  },
+  "candidate_documents": 12738060,
+  "candidate_pythia_tokens": 16000001350,
+  "math_test_preparation": {
+    "raw_official_test": 5000,
+    "retained_test": 4061,
+    "development": 512,
+    "protected_old": 5632,
+    "exclusions": {
+      "image_or_diagram": 788,
+      "overlap_with_used_or_earlier_test_problem": 151
+    },
+    "test_subjects": {
+      "algebra": 1091,
+      "counting_and_probability": 385,
+      "geometry": 159,
+      "intermediate_algebra": 797,
+      "number_theory": 529,
+      "prealgebra": 732,
+      "precalculus": 368
+    },
+    "source": {
+      "dataset": "EleutherAI/hendrycks_math",
+      "revision": "21a5633873b6a120296cce3e2df9d5550074f4a3",
+      "old_target_bundle": "/mnt/tianzhu_hot/data-picking/data/processed/math-web-retrieval-v2-4096-seed20261023",
+      "legacy_target_bundle": "/mnt/tianzhu_hot/data-picking/data/processed/15b20f8fca81ffee",
+      "max_length": 2048,
+      "max_new_tokens": 512,
+      "generation": "greedy",
+      "bootstrap_samples": 2000,
+      "bootstrap_seed": 20261105
+    },
+    "duplicate_rule": "64-permutation 16x4 character 5-gram LSH candidates; actual Jaccard >= 0.8"
+  },
+  "fasttext_heldout_metrics": {
+    "delta_loss": {
+      "label_dev": {
+        "documents": 9221,
+        "include_documents": 2553,
+        "average_precision": 0.46750950779806694,
+        "f1_at_half": 0.26403641881638845,
+        "top_token_precision": 0.5464926148309238,
+        "top_token_recall": 0.474566093630136,
+        "top_document_precision": 0.45859649122807017,
+        "top_document_recall": 0.5119467293380336,
+        "actual_selected_token_fraction": 0.20019977059547403
+      },
+      "label_test": {
+        "documents": 9870,
+        "include_documents": 2801,
+        "average_precision": 0.47295123683429957,
+        "f1_at_half": 0.2624861265260821,
+        "top_token_precision": 0.4869144106931076,
+        "top_token_recall": 0.4315522146752431,
+        "top_document_precision": 0.4646333549643089,
+        "top_document_recall": 0.5112459835772938,
+        "actual_selected_token_fraction": 0.20004971376719435
+      }
+    },
+    "relative_gain": {
+      "label_dev": {
+        "documents": 9221,
+        "include_documents": 2608,
+        "average_precision": 0.46211466383860555,
+        "f1_at_half": 0.23699599876885197,
+        "top_token_precision": 0.4399975304773948,
+        "top_token_recall": 0.4127668426771774,
+        "top_document_precision": 0.4449901768172888,
+        "top_document_recall": 0.5210889570552147,
+        "actual_selected_token_fraction": 0.20511392049578256
+      },
+      "label_test": {
+        "documents": 9870,
+        "include_documents": 2815,
+        "average_precision": 0.4611055387505916,
+        "f1_at_half": 0.23324779013401767,
+        "top_token_precision": 0.4306069336761196,
+        "top_token_recall": 0.4108514951053566,
+        "top_document_precision": 0.4477657935285054,
+        "top_document_recall": 0.5161634103019538,
+        "actual_selected_token_fraction": 0.2001635743307685
+      }
+    }
+  },
+  "training_recipe": {
+    "training": {
+      "architecture": "EleutherAI/pythia-160m",
+      "revision": "50f5173d932e8e61f858120bcb800b97af589f46",
+      "initialization": "random",
+      "arms": [
+        "random",
+        "delta_loss",
+        "relative_gain"
+      ],
+      "seeds": [
+        42,
+        43,
+        44
+      ],
+      "first_delivery_seed": 42,
+      "total_prediction_tokens": 3200000000,
+      "sequence_length": 2048,
+      "effective_batch_size": 128,
+      "micro_batch_size": 32,
+      "learning_rate": 0.001,
+      "min_learning_rate": 0.0001,
+      "warmup_ratio": 0.1,
+      "betas": [
+        0.9,
+        0.95
+      ],
+      "adam_epsilon": 1e-08,
+      "weight_decay": 0.1,
+      "max_grad_norm": 1.0,
+      "parameter_dtype": "float32",
+      "autocast_dtype": "bfloat16",
+      "deterministic_algorithms": true,
+      "save_steps": 500,
+      "keep_checkpoints": 2,
+      "save_optimizer": true,
+      "auto_resume": true
+    },
+    "architecture_sha256": "76eb275107220e450d31258f792a2efcbee109d8b62ae0088260057dec06362f",
+    "implementation_sha256": "83eca00a158c537bdf6a719af4005d9c3b84410cd45a93d529545a586d4c84c2",
+    "attention_backend": "flash",
+    "compile_model": true,
+    "torch_version": "2.11.0+cu128"
+  },
+  "completed_at_utc": "2026-11-03T05:09:13.124986+00:00"
+}

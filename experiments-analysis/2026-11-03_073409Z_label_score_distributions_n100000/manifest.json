@@ -1,0 +1,99 @@
+{
+  "analysis_kind": "label_score_distributions",
+  "created_at_utc": "2026-11-03T07:37:42.552499+00:00",
+  "source_run": "/mnt/tianzhu_hot/data-picking-v2/runs/math-lossdrop-fasttext-qwen15b-pythia160m-n100000-seed20261102",
+  "source_scores": "/mnt/tianzhu_hot/data-picking-v2/runs/math-lossdrop-fasttext-qwen15b-pythia160m-n100000-seed20261102/label_scores.parquet",
+  "source_scores_sha256": "38ae99f356d52ec4c8fbfec39885b58fc187b6e89b6e4ce9059b1ebc3c30dc1f",
+  "source_completion": {
+    "size": 15001182,
+    "sha256": "38ae99f356d52ec4c8fbfec39885b58fc187b6e89b6e4ce9059b1ebc3c30dc1f",
+    "completed_at_utc": "2026-11-02T22:00:05.818982+00:00",
+    "documents": 100000
+  },
+  "snapshot": "snapshot/label_scores.parquet",
+  "snapshot_sha256": "9f049f41ae9fc251a6037bfa69171a43080c2e2033a0c1fdd717a3892b0d6d41",
+  "snapshot_columns": [
+    "id",
+    "partition",
+    "ref_loss",
+    "sft_loss",
+    "delta_loss",
+    "relative_gain",
+    "pythia_tokens"
+  ],
+  "documents": 100000,
+  "partition_counts": {
+    "label_train": 80909,
+    "label_test": 9870,
+    "label_dev": 9221
+  },
+  "threshold_sources": {
+    "delta_loss": {
+      "path": "/mnt/tianzhu_hot/data-picking-v2/runs/math-lossdrop-fasttext-qwen15b-pythia160m-n100000-seed20261102/fasttext/delta_loss/threshold.json",
+      "sha256": "b4f437770c551aa7f2004799cceec0e3b5a0617002747e3a30e7d149a966e34e"
+    },
+    "relative_gain": {
+      "path": "/mnt/tianzhu_hot/data-picking-v2/runs/math-lossdrop-fasttext-qwen15b-pythia160m-n100000-seed20261102/fasttext/relative_gain/threshold.json",
+      "sha256": "6a0c7a9d9e59e99fa7326985081c2330253c1cd08813333455b66e803f2a697b"
+    }
+  },
+  "relative_display_units": "percent = 100 * relative_gain; snapshot retains raw ratio",
+  "central_interval": [
+    0.005,
+    0.995
+  ],
+  "figure_weighting": "document weighting unless explicitly labelled Pythia-token weighting",
+  "versions": {
+    "numpy": "2.2.6",
+    "pandas": "2.3.3",
+    "pyarrow": "21.0.0",
+    "matplotlib": "3.10.7",
+    "nbformat": "5.10.4",
+    "nbclient": "0.10.2",
+    "ipykernel": "6.30.1"
+  },
+  "notebook_executed_at_utc": "2026-11-03T07:37:50.370231+00:00",
+  "code_cells_executed": 7,
+  "artifacts": {
+    "label_score_distributions.ipynb": {
+      "bytes": 690870,
+      "sha256": "2d4314721a0ad6a2812485cc52405ef30365bd1a08db3d4df124356c733c8b47"
+    },
+    "figures/01_central_distributions.png": {
+      "bytes": 160484,
+      "sha256": "ca2dfc325ec8266c21f5abe893a671e41c67fd163f75ac03171b24ccff0ff18b"
+    },
+    "figures/02_full_range_log_histograms.png": {
+      "bytes": 108891,
+      "sha256": "58fbed89c8df167b373059a52a49311bb67fa3614f8abe4e9f072f547ac15af1"
+    },
+    "figures/03_document_token_ecdf.png": {
+      "bytes": 136917,
+      "sha256": "ddb25d8ab62342de37f46be8cc7afae1f3b76cdec1f4d806aaf7cc261711cc30"
+    },
+    "figures/04_split_distributions.png": {
+      "bytes": 118932,
+      "sha256": "65b7c7cc74e5d227071e883cf323cff29d01b75a61848438940378671c1c3bb7"
+    },
+    "figures/05_joint_distribution.png": {
+      "bytes": 287660,
+      "sha256": "718a73393d77cc608fe229d4393cc94993ddec230638eb9609879babcbec1692"
+    },
+    "summary.csv": {
+      "bytes": 600,
+      "sha256": "c05bac156d49416c6b2173103c52a66fb2a42abda9834e947065502cd45b25ef"
+    },
+    "quantiles.csv": {
+      "bytes": 624,
+      "sha256": "5ab7ccb65cb29db1fa4f0a7566696e21ee6053337f5271482551fc531b13c757"
+    },
+    "split_summary.csv": {
+      "bytes": 647,
+      "sha256": "ce5bfbfff92f18f2a007eed91ed2eb1cc3c28c2d35739e21e42d9844c55f15c9"
+    },
+    "distribution_summary.json": {
+      "bytes": 567,
+      "sha256": "72dcbb0d936caf2f4c020df95adc8d7055d470cfa2da613f6f6b5702d2005b33"
+    }
+  }
+}

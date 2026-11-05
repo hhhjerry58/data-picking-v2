@@ -1,0 +1,80 @@
+{
+  "recorded_date": "2026-11-01",
+  "measurement_kind": "historical_chunk_timing_extrapolation_not_a_new_benchmark",
+  "run_id": "math-web-probe-qwen25-1p5b-n4096-b64-s64-seed42",
+  "gpu": "NVIDIA H100 PCIe",
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "sft_checkpoint_step": 64,
+  "forward_dtype": "float32",
+  "attention_backend": "math",
+  "batch_size": 4,
+  "scored_tokens_per_model": 9188836,
+  "windows_per_model": 11688,
+  "token_unit": "Qwen scored next-token targets; not Pythia pretraining tokens",
+  "timings": [
+    {
+      "model_label": "reference",
+      "shard": 0,
+      "chunks": 46,
+      "windows": 5844,
+      "gpu_seconds": 587.58,
+      "source": "/mnt/tianzhu_hot/data-picking/runs/math-web-probe-qwen25-1p5b-n4096-b64-s64-seed42/logs/reference-0.log"
+    },
+    {
+      "model_label": "reference",
+      "shard": 1,
+      "chunks": 46,
+      "windows": 5844,
+      "gpu_seconds": 578.35,
+      "source": "/mnt/tianzhu_hot/data-picking/runs/math-web-probe-qwen25-1p5b-n4096-b64-s64-seed42/logs/reference-1.log"
+    },
+    {
+      "model_label": "step-000064",
+      "shard": 0,
+      "chunks": 46,
+      "windows": 5844,
+      "gpu_seconds": 598.58,
+      "source": "/mnt/tianzhu_hot/data-picking/runs/math-web-probe-qwen25-1p5b-n4096-b64-s64-seed42/logs/sft-0.log"
+    },
+    {
+      "model_label": "step-000064",
+      "shard": 1,
+      "chunks": 46,
+      "windows": 5844,
+      "gpu_seconds": 594.80,
+      "source": "/mnt/tianzhu_hot/data-picking/runs/math-web-probe-qwen25-1p5b-n4096-b64-s64-seed42/logs/sft-1-document-audit.log"
+    }
+  ],
+  "metric_source": "/home/v-guanhechen/data-picking/experiments-analysis/2026-10-23_095832Z_math-web-probe-qwen25-1p5b-n4096-b64-s64-seed42/snapshot/metrics.json",
+  "effective_config_source": "/home/v-guanhechen/data-picking/experiments-analysis/2026-10-23_095832Z_math-web-probe-qwen25-1p5b-n4096-b64-s64-seed42/snapshot/effective_config.json",
+  "total_gpu_seconds_both_models": 2359.31,
+  "single_forward_scored_tokens_per_gpu_second": 7789.426569632647,
+  "gpu_hours_formula": "2 * candidate_qwen_scored_tokens / single_forward_scored_tokens_per_gpu_second / 3600",
+  "extrapolations": [
+    {
+      "candidate_qwen_scored_tokens": 100000000,
+      "both_models_gpu_hours": 7.1321752710450905,
+      "ideal_4_gpu_hours": 1.7830438177612726,
+      "ideal_3_gpu_hours": 2.37739175701503
+    },
+    {
+      "candidate_qwen_scored_tokens": 3200000000,
+      "both_models_gpu_hours": 228.2296086734429,
+      "ideal_4_gpu_hours": 57.057402168360724,
+      "ideal_3_gpu_hours": 76.07653622448096
+    },
+    {
+      "candidate_qwen_scored_tokens": 16000000000,
+      "both_models_gpu_hours": 1141.1480433672143,
+      "ideal_4_gpu_hours": 285.2870108418036,
+      "ideal_3_gpu_hours": 380.3826811224048
+    }
+  ],
+  "limitations": [
+    "Includes WEB_SCORE_CHUNK scoring and chunk-write durations only; excludes model loading, sanity checks, corpus downloads, and tokenization.",
+    "Assumes one GPU per historical scoring shard and ideal independent data-shard scaling.",
+    "Different document lengths, padding, context policy, I/O and GPU contention can change throughput.",
+    "Convert Pythia corpus token budgets to Qwen scored-token budgets using an observed ratio before predicting a new run.",
+    "These timings do not predict the throughput of a BF16 implementation or a smaller model."
+  ]
+}

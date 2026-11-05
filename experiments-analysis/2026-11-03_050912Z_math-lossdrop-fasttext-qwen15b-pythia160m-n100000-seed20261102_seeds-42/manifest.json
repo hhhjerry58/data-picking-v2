@@ -1,0 +1,18 @@
+{
+  "fingerprint": "d458a4134f1c5f601bfca0da5f86eaedae1f58c782de0e88fa9b3a7b29542bb5",
+  "source_run": "/mnt/tianzhu_hot/data-picking-v2/runs/math-lossdrop-fasttext-qwen15b-pythia160m-n100000-seed20261102",
+  "source_files": {
+    "/mnt/tianzhu_hot/data-picking-v2/runs/math-lossdrop-fasttext-qwen15b-pythia160m-n100000-seed20261102/evaluation/random-seed-42/metrics.json": "39ae3a81028ca068426098310f56d6d9c5ad6d329da0cc013cf371f0c859776a",
+    "/mnt/tianzhu_hot/data-picking-v2/runs/math-lossdrop-fasttext-qwen15b-pythia160m-n100000-seed20261102/evaluation/random-seed-42/math_test_nll.parquet": "ed8db57caa535d8aca23b49dcfaf0ebc7b8fcc44515acce80b9612ae6b0a527b",
+    "/mnt/tianzhu_hot/data-picking-v2/runs/math-lossdrop-fasttext-qwen15b-pythia160m-n100000-seed20261102/pretraining/random-seed-42/effective_config.json": "2f630caa933f77af54730b0898f451f495603f0184f173b51d07b87ef0d660c1",
+    "/mnt/tianzhu_hot/data-picking-v2/runs/math-lossdrop-fasttext-qwen15b-pythia160m-n100000-seed20261102/pretraining/random-seed-42/TRAINING_COMPLETED.json": "b3dc0ddeba1cc7d22941112c452a5b9c100e486667ba594bde29707415f1786a",
+    "/mnt/tianzhu_hot/data-picking-v2/runs/math-lossdrop-fasttext-qwen15b-pythia160m-n100000-seed20261102/evaluation/delta_loss-seed-42/metrics.json": "7946709f7f2edf21d195ada580aa00108a829b0d98c75e8571df8574be0bb16f",
+    "/mnt/tianzhu_hot/data-picking-v2/runs/math-lossdrop-fasttext-qwen15b-pythia160m-n100000-seed20261102/evaluation/delta_loss-seed-42/math_test_nll.parquet": "ce4ed85021219d146a84e84a96d05ededf16132aad05361fd0cd00b21a2c7a48",
+    "/mnt/tianzhu_hot/data-picking-v2/runs/math-lossdrop-fasttext-qwen15b-pythia160m-n100000-seed20261102/pretraining/delta_loss-seed-42/effective_config.json": "d42737821b5dc4fe30df71de33cadfe08e6c599059e0f5ca2767c7ec7efa4c29",
+    "/mnt/tianzhu_hot/data-picking-v2/runs/math-lossdrop-fasttext-qwen15b-pythia160m-n100000-seed20261102/pretraining/delta_loss-seed-42/TRAINING_COMPLETED.json": "e274aae1a553235d17c65245b9e4ebf3af8a81869e3b52fe549712b30e3f6949",
+    "/mnt/tianzhu_hot/data-picking-v2/runs/math-lossdrop-fasttext-qwen15b-pythia160m-n100000-seed20261102/evaluation/relative_gain-seed-42/metrics.json": "e8245979b371410efe4b36ec96887b279e66af5ae3d4deb7ab2c7dec506c9a58",
+    "/mnt/tianzhu_hot/data-picking-v2/runs/math-lossdrop-fasttext-qwen15b-pythia160m-n100000-seed20261102/evaluation/relative_gain-seed-42/math_test_nll.parquet": "62de6ae82fcabcb14fe1a83986aef18ec0edc4055320f065de8afc331d036e72",
+    "/mnt/tianzhu_hot/data-picking-v2/runs/math-lossdrop-fasttext-qwen15b-pythia160m-n100000-seed20261102/pretraining/relative_gain-seed-42/effective_config.json": "639270fe20cb06216ea091bbc7de2befa1bf00230b435713fb1e50dd8e8a1be1",
+    "/mnt/tianzhu_hot/data-picking-v2/runs/math-lossdrop-fasttext-qwen15b-pythia160m-n100000-seed20261102/pretraining/relative_gain-seed-42/TRAINING_COMPLETED.json": "f2b9b2af419f758224124d456bd4cee6a9e9277650fe673151d556d515f072e6"
+  }
+}

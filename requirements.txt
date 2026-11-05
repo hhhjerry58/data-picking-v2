@@ -1,0 +1,20 @@
+# Runtime versions used by the existing checkpoints. Torch is installed separately
+# from the CUDA 12.8 wheel index by scripts/setup_env.sh.
+transformers==4.57.1
+tokenizers==0.22.2
+safetensors==0.6.2
+huggingface-hub==0.36.0
+numpy==2.2.6
+pandas==2.3.3
+pyarrow==21.0.0
+PyYAML==6.0.3
+requests==2.34.2
+tldextract==5.3.1
+datasketch==1.6.5
+xxhash==4.0.1
+pyahocorasick==2.2.0
+scipy==1.18.1
+scikit-learn==1.7.2
+matplotlib==3.10.7
+duckdb==1.4.3
+pybind11==3.0.1
