@@ -1,0 +1,57 @@
+run_id: pr-scores-qwen35-9b-v6-20261125
+prepared_from_run: pr-data-qwen35-53q-20k-20261125
+artifact_root: /mnt/tianzhu_hot/data-picking-v2
+runtime_root: /dev/shm/data-picking-v2-pr
+analysis_root: /home/v-guanhechen/experiments
+
+model:
+  name: Qwen/Qwen3.5-9B
+  revision: c202236235762e1c871ad0ccb60c8ee5ba337b9a
+  parameter_dtype: float32
+  compute_dtype: bfloat16
+  max_length: 262144
+  lm_head_chunk_tokens: 512
+  gradient_checkpointing: true
+  activation_offload_min_tokens: 32768
+  linear_attention: fla
+
+data:
+  trajectory_file: /mnt/conversationhubhot/wenwan/data/deepswe/deepswe_trajectory_messages_v1/without_reasoning.jsonl
+  expected_tasks: 106
+  q_tasks: 53
+  split_seed: 20261125
+  pr_root: /mnt/conversationhubhot/wangliang/code/data/devai-pr-random-ctx
+  pr_index: /mnt/conversationhubhot/wangliang/code/data/devai-pr-random-ctx/devai-pr-random-ctx.json
+  pr_subsets: [base/8k/git_diff]
+  candidates: 20000
+  max_source_shards: 64
+  max_candidate_tokens: 8192
+  min_answer_tokens: 16
+  sample_seed: 20261126
+  exclude_pr_ids_file: null
+
+objectives: [full_text, answer_only]
+methods: [absolute_loss_drop, relative_loss_drop, grad_dot]
+
+probe:
+  optimizer_device: cpu
+  optimizer_cpu_threads: 16
+  gradient_normalization: global_q_token_mean
+  seed: 42
+  epochs: 1
+  documents_per_step: 4
+  learning_rate: 0.000002
+  warmup_steps: 2
+  betas: [0.9, 0.95]
+  adam_epsilon: 0.00000001
+  weight_decay: 0.0
+  max_grad_norm: 1.0
+  save_steps: 8
+  keep_checkpoints: 2
+  save_optimizer: true
+  auto_resume: true
+
+scoring:
+  gradient_save_documents: 8
+  journal_fsync_rows: 1
+  journal_persist_rows: 32

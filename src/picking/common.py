@@ -2,13 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import random
-import time
 from datetime import datetime, timezone
 from pathlib import Path
-
-import yaml
 
 REPO = Path(__file__).resolve().parents[2]
 
@@ -41,40 +37,14 @@ def write_json(path, obj):
         f.write("\n")
 
 
-def read_jsonl(path):
-    with open(path) as f:
-        return [json.loads(line) for line in f if line.strip()]
-
-
-def write_jsonl(path, rows):
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w") as f:
-        for row in rows:
-            f.write(json.dumps(row, ensure_ascii=False) + "\n")
-
-
 def utc_now():
     return datetime.now(timezone.utc).isoformat()
-
-
-def config(path=None):
-    cfg = yaml.safe_load(Path(path or REPO / "configs/experiment.yaml").read_text())
-    if os.environ.get('DATA_PICKING_RUNTIME_ROOT'):
-        cfg['runtime_root'] = str(Path(os.environ['DATA_PICKING_RUNTIME_ROOT']).expanduser().resolve())
-    if cfg["source"]["label_documents"] != 100000:
-        raise ValueError("The authorized formal label set has 100,000 documents")
-    for stage in ("fasttext", "pretraining"):
-        if not cfg[stage]["save_optimizer"] or not cfg[stage]["auto_resume"]:
-            raise ValueError(f"{stage}: optimizer state and auto-resume are required")
-    return cfg
 
 
 def paths(cfg):
     root = Path(cfg["artifact_root"])
     scratch = Path(cfg["runtime_root"])
-    return {"root": root, "scratch": scratch, "raw": root / "data/raw", "data": root / "data/processed",
-            "run": root / "runs" / cfg["run_id"], "assets": root / "cache/assets"}
+    return {"root": root, "scratch": scratch, "run": root / "runs" / cfg["run_id"]}
 
 
 def emit(event, **fields):
@@ -94,10 +64,6 @@ def seed_all(seed):
     torch.cuda.manual_seed_all(seed)
     torch.backends.cuda.matmul.allow_tf32 = False
     torch.backends.cudnn.allow_tf32 = False
-
-
-def implementation_hash(names):
-    return {str(name): file_hash(REPO / name) for name in names}
 
 
 def complete_file(path, **metadata):

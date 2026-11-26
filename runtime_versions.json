@@ -4,6 +4,5 @@
   "torch_git_version": "70d99e998b4955e0049d13a98d77ae1b14db1f45",
   "cuda_build": "12.8",
   "transformers": "4.57.1",
-  "numpy": "2.2.6",
-  "pretraining_implementation_sha256": "83eca00a158c537bdf6a719af4005d9c3b84410cd45a93d529545a586d4c84c2"
+  "numpy": "2.2.6"
 }

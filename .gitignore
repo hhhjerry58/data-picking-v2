@@ -1,4 +1,5 @@
 .venv/
+.venv-pr/
 __pycache__/
 .pytest_cache/
 .cache/
@@ -8,16 +9,3 @@ __pycache__/
 .env.*
 blob/
 *.pyc
-src/picking/*.so
-vendor/fasttext/build/
-vendor/fasttext/*.so
-vendor/fasttext/fasttext
-vendor/fasttext/*.o
-vendor/fasttext/*
-!vendor/fasttext/src/
-!vendor/fasttext/Makefile
-!vendor/fasttext/CMakeLists.txt
-!vendor/fasttext/LICENSE
-!vendor/fasttext/PINNED_COMMIT.json
-!vendor/fasttext/README.md
-!vendor/fasttext/VENDOR_PATCHES.md

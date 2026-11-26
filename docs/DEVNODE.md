@@ -1,97 +1,84 @@
-在另一台 devnode 继续本轮实验
-===========================
+# 在 devnode 运行与恢复实验
 
-本轮还需要完成 FT-relative / seed 43 的末段训练、seed 43 的三组评估，以及 seed 44 的三组训练与评估。
-已验证的恢复点是 **step 11,500 / 3,013,184,000 有效预测 tokens**，包含 optimizer、scheduler、RNG 和数据游标。
-旧节点的等待队列已为本次交接停止。一个 run 同时只在一台节点执行。
+当前主实验为 [PR 六分布评分](PR_SELECTION.md)，使用 `.venv-pr`；
+跨节点 A100 评分及 Windows 提交见 [PR_PARALLEL.md](PR_PARALLEL.md)。
+以下内容保留用于 `scripts/domain_retrieval.py` 对应的已完成 pilot 恢复，
+协议见 [DOMAIN_RETRIEVAL.md](DOMAIN_RETRIEVAL.md)，参数见 [domain_retrieval.yaml](../configs/domain_retrieval.yaml)。
 
-1. **克隆仓库，挂载相同的持久化数据。**
+## 节点准备
 
-   ```bash
-   gh repo clone hhhjerry58/data-picking-v2
-   cd data-picking-v2
-   ```
+使用 Python **3.12**、兼容 CUDA **12.8** 的驱动，以及挂载在 `/mnt/tianzhu_hot` 的持久化存储。
+首轮使用 H100 80GB；迁移已有 checkpoint 时使用相同框架版本和数值配置。
 
-   将原存储挂载到 `/mnt/tianzhu_hot`，确认下面的目录可读写：
+```bash
+bash scripts/setup_env.sh
+source scripts/env.sh
+.venv/bin/python scripts/domain_retrieval.py check
+```
 
-   ```text
-   /mnt/tianzhu_hot/data-picking-v2/
-     cache/assets/pythia160m/
-     data/processed/
-     runs/math-lossdrop-fasttext-qwen15b-pythia160m-n100000-seed20261102/
-   ```
+安装脚本创建独立 `.venv`、安装固定版本的 PyTorch 和项目依赖，并检查训练框架版本。
+`scripts/env.sh` 设置缓存、临时目录、线程数和 `PYTHONPATH`；运行目录由 YAML 的
+`artifact_root`、`runtime_root` 和 `run_id` 决定。
 
-   Git 中包含代码、固定配置、fastText 源码和小型结果快照。语料、token 文件、完整模型和 checkpoint 留在上述存储。
-   已有 manifest 记录了绝对路径，因此续跑时保持这个挂载路径。不要重新生成或改写已有数据清单。
+默认持久化布局：
 
-2. **建立独立的 Python 环境。**
+```text
+/mnt/tianzhu_hot/data-picking-v2/
+  cache/domain-retrieval/       固定版本的模型和带类别语料
+  runs/<run_id>/
+    effective_config.json      已冻结的配置
+    OWNER.json                 运行所属节点
+    data/                      数据划分与候选池
+    scores/                    M0/M1 配对 loss
+    methods/<name>/            各方法排名、PR 和指标
+    selection/<arm>/           继续训练文档清单
+    pretraining/<arm-seed>/     完整训练 checkpoint 和日志
+    evaluation/                独立测试集逐篇 NLL
+    status.json                当前阶段
+    latest_report.json         分析归档位置
+```
 
-   需要 Python **3.12**、Python 开发头文件、C++17 编译器、`make` 和兼容 CUDA 12.8 的 NVIDIA 驱动。
-   本轮使用 H100 80GB；冻结的 micro batch 32 需要同级显存。建议使用相同型号以减少跨硬件数值差异。
+`pretraining/` 是首轮已经使用的产物目录名，里面保存的是**从 M0 继续训练**的状态。
+保持这个路径可以直接恢复已保存的 checkpoint。
+节点本地 scratch 使用配置的 `runtime_root/<run_id>/`；需预留模型、optimizer 镜像和日志空间。
 
-   ```bash
-   # 运行目录需要较大 POSIX 空间：单个训练任务至少 32 GiB，剩余整轮建议预留 100–160 GiB。
-   # Docker 默认的 64 MiB /dev/shm 不够；可以改到节点本地的快速磁盘。
-   export DATA_PICKING_RUNTIME_ROOT=/dev/shm/data-picking-v2-runtime
-   bash scripts/setup_env.sh
-   source scripts/env.sh
-   ```
+## 启动与查看状态
 
-   安装脚本固定 PyTorch `2.11.0+cu128`、Transformers `4.57.1` 等版本，并编译本仓库的 fastText 扩展。
-   `requirements.txt`、`requirements-dev.txt` 和 `runtime_versions.json` 记录了依赖。
-   环境独立安装，checkpoint 上传代码也已包含在仓库内。
+```bash
+DATA_PICKING_GPU_IDS=0,1,2 .venv/bin/python scripts/domain_retrieval.py run
+```
 
-3. **设置节点 GPU 和 checkpoint 存储方式。**
+只使用明确允许且空闲的物理 GPU，不停止其他任务。
+单卡顺序执行；多卡时先完成 probe 和评分，再分配独立的 arm/seed 任务。
+通过运行目录的 `status.json`、`pretraining/*/train.jsonl` 和 `logs/` 查看进度。
+`EXPERIMENT_COMPLETED.json` 只在全部训练、评估和报告完成后写入。
 
-   ```bash
-   export DATA_PICKING_GPU_IDS=0,1,2
-   # 支持只选一张卡，例如 DATA_PICKING_GPU_IDS=0；各任务仍使用相同的有效全局 batch。
-   ```
+默认从当前 blobfuse 挂载配置读取 checkpoint 传输设置，使用分块上传、服务端校验和读回检查。
+也可指定外部挂载配置：
 
-   默认从当前 blobfuse 进程读取挂载配置，使用已验证的分块上传方式。如果无法自动定位配置：
+```bash
+export DATA_PICKING_BLOB_CONFIG=/path/outside/repo/blobfuse2.yaml
+```
 
-   ```bash
-   export DATA_PICKING_BLOB_CONFIG=/path/outside/repo/blobfuse2.yaml
-   ```
+该传输方式需要配置中的 `azstorage.endpoint`、`container` 和 `sas`；凭据留在仓库外。
+其他持久化文件系统可显式设置 `DATA_PICKING_CHECKPOINT_IO=filesystem`。
 
-   该方式需要外部挂载配置中具有 `azstorage.endpoint`、`container` 和 `sas`。凭据文件不应放进仓库。
-   对于使用其他认证方式或其他持久化文件系统的挂载，可以显式选择文件系统方式：
+## 自动恢复与跨节点迁移
 
-   ```bash
-   export DATA_PICKING_CHECKPOINT_IO=filesystem
-   ```
+同节点重复执行启动命令即可：已完成阶段会复用，训练从最近完整 checkpoint 恢复。
+checkpoint 包含模型、optimizer、scheduler、RNG 和 epoch/文档/token 游标。
+配置中的 `save_optimizer: true`、`auto_resume: true` 必须保持开启。
 
-   文件系统方式仍保存完整状态，执行 fsync、关闭文件和 SHA-256 读回校验；上传性能可能不同。
-   这些是节点运行/传输设置，不修改学习率、batch、token 预算或已有训练指纹。
+跨节点时，先确认旧节点及其子进程已经退出，再转交该 run 的 `OWNER.json` 所属节点。
+同一 run 只能由一个节点写入；程序不会仅凭本机查不到旧 PID 就自动接管。
+保持持久化路径、配置和数值实现一致；本地 RAM mirror 不存在时，会从持久化 checkpoint 恢复。
 
-4. **核对恢复条件，再启动。**
+`domain_retrieval/data.py`、`domain_retrieval/training.py` 和训练参数受指纹保护。
+改变数据或数值实现时使用新 `run_id`，不能修改完成标记或绕过身份校验。
 
-   ```bash
-   .venv/bin/python scripts/check_resume.py --full-checkpoint
-   .venv/bin/python scripts/start_run.py
-   ```
+## 结果
 
-   检查程序会确认框架版本、训练文件哈希、持久化数据、完整 optimizer 状态和节点资源。
-   如暂时没有空闲 GPU，可以分别用 `check_resume.py --no-gpu` 检查存储，并用
-   `start_run.py --wait-for-gpu` 排队。`start_run.py` 表示明确恢复，会清除交接时留下的停止标记。
-
-   新节点会先续接 seed 43 的 FT-relative，再完成后续评估和 seed 44。已经完成的评分、分类器、
-   选数以及模型会根据完成标记跳过。跨节点发现旧的 RAM mirror 不存在时，会从持久化 checkpoint 重新加载。
-
-   **不要修改 `src/picking/pretraining.py` 或 `configs/experiment.yaml` 的 `pretraining` 部分来绕过恢复检查。**
-   现有 checkpoint 会验证它们；`save_optimizer: true` 和 `auto_resume: true` 保持启用。
-
-5. **查看状态与结果。**
-
-   ```bash
-   .venv/bin/python scripts/status.py
-   # 显式停止，保存过的 checkpoint 可继续使用：
-   .venv/bin/python scripts/stop_pipeline.py
-   ```
-
-   每个 seed 的三组评估结束后，报告自动写到本地 checkout 的 `experiments-analysis/`。
-   持久化运行目录中的 `latest_report.json` 指向最新报告，`EXPERIMENT_COMPLETED.json` 表示全部完成。
-   控制进程、watchdog、日志同步进程由启动入口放到后台；状态带节点名，避免把另一台节点的 PID 当成本机进程。
-
-当前首轮结果见 [seed 42 报告](../experiments-analysis/2026-11-03_050912Z_math-lossdrop-fasttext-qwen15b-pythia160m-n100000-seed20261102_seeds-42/REPORT.md)。
-历史报告中 `/home/v-guanhechen/...` 路径是生成时的 provenance。续跑剩余任务所需的运行数据均在持久化根目录中。
+报告、逐篇统计、有效配置、训练日志及 notebook 一起保存到
+`/home/v-guanhechen/experiments/YYYY-MM-DD_HH-MM-<topic>/`。
+目录时间使用 `America/Los_Angeles`，总索引从旧到新排列。
+图表在 notebook 的代码单元中生成，执行输出保存在 notebook 内。

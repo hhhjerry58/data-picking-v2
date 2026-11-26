@@ -2,5 +2,3 @@
 *.png binary
 *.parquet binary
 *.pdf binary
-vendor/fasttext/** -whitespace
-experiments-analysis/** -whitespace

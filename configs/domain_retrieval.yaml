@@ -1,0 +1,71 @@
+run_id: domain-retrieval-pythia160m-arxiv-fp32-pilot-20261106
+artifact_root: /mnt/tianzhu_hot/data-picking-v2
+runtime_root: /dev/shm/data-picking-v2-runtime/domain-retrieval
+analysis_root: /home/v-guanhechen/experiments
+numerical_preflight_run: /mnt/tianzhu_hot/data-picking-v2/runs/domain-retrieval-pythia160m-arxiv-pilot-20261106
+
+model:
+  name: EleutherAI/pythia-160m
+  revision: 50f5173d932e8e61f858120bcb800b97af589f46
+  files: [config.json, model.safetensors, tokenizer.json, tokenizer_config.json, special_tokens_map.json]
+  # 也可以提供 local_path: /path/to/a/HuggingFace/checkpoint
+
+data:
+  dataset: DKYoon/SlimPajama-6B
+  revision: b5f90f419b7489cdba26fdbc8c022fcb5562f968
+  source_files:
+    - data/train-00000-of-00048-ab2b35705f029d94.parquet
+    - data/train-00001-of-00048-f2ff493d6eb6da4e.parquet
+    - data/train-00002-of-00048-4ff3ce9cc290a2f2.parquet
+    - data/train-00003-of-00048-0dd6d32660874d8a.parquet
+    - data/train-00004-of-00048-fd88fe4932b810de.parquet
+    - data/train-00005-of-00048-4f207a99066de831.parquet
+    - data/train-00006-of-00048-19ce32ee67373c6d.parquet
+    - data/train-00007-of-00048-063b7f39694e5033.parquet
+  text_column: text
+  category_column: meta.redpajama_set_name
+  target_category: RedPajamaArXiv
+  split_seed: 20261106
+  max_length: 512
+  min_prediction_tokens: 128
+  near_duplicate_jaccard: 0.8
+  probe_documents: 512
+  positive_documents: 1024
+  negative_documents: 4096
+  target_test_documents: 512
+  other_test_documents: 512
+
+methods: [absolute_loss_drop, relative_loss_drop, random]
+selection_seed: 20261107
+scoring_batch_size: 8
+
+training:
+  learning_rate: 0.00005
+  min_learning_rate: 0.000005
+  warmup_steps: 6
+  prediction_tokens_per_step: 8192
+  micro_batch_size: 8
+  weight_decay: 0.01
+  betas: [0.9, 0.95]
+  adam_epsilon: 0.00000001
+  max_grad_norm: 1.0
+  autocast_dtype: float32
+  save_steps: 32
+  keep_checkpoints: 2
+  save_optimizer: true
+  auto_resume: true
+
+probe:
+  seed: 42
+  prediction_tokens: 524288
+
+continuation:
+  initialization: M0
+  seeds: [42, 43, 44]
+  arms: [oracle_target, other, random, absolute_loss_drop, relative_loss_drop]
+  selected_documents: 1024
+  prediction_tokens: 524288
+
+evaluation:
+  bootstrap_samples: 2000
+  bootstrap_seed: 20261108

@@ -1,1 +1,1 @@
-"""Reproducible mathematics loss-drop data selection experiments."""
+"""Domain retrieval and continuation from an existing pretrained checkpoint."""
