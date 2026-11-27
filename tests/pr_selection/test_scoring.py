@@ -71,78 +71,7 @@ def test_head_chunking_preserves_complete_context_gradient():
     assert model.model.embed_tokens.weight.grad[2].abs().sum() > 0
 
 
-def test_global_guidance_normalization_and_dot_sign():
-    torch.manual_seed(8)
-    model = TinyLM()
-    engine = Engine(model, chunk_size=2)
-    a = {'input_ids': [1, 2, 3, 4], 'target_runs': [[2, 4]]}
-    b = {'input_ids': [5, 6, 7], 'target_runs': [[1, 3]]}
-    engine.backward(a, 'guidance', denominator=4, accumulate=True)
-    engine.backward(b, 'guidance', denominator=4, accumulate=True)
-    qgrad = engine.copy_gradients()
-    engine.backward(a, 'guidance')
-    dot, norm = engine.gradient_statistics(qgrad)
-    expected = sum(float((p.grad.double()*qgrad[n].double()).sum()) for n, p in model.named_parameters())
-    assert dot == pytest.approx(expected)
-    assert norm > 0
-    old_loss = engine.losses(a, ['guidance'])['guidance']
-    eta = 1e-3
-    with torch.no_grad():
-        for n, p in model.named_parameters():
-            p.sub_(eta*qgrad[n])
-    new_loss = engine.losses(a, ['guidance'])['guidance']
-    assert (old_loss-new_loss)/eta == pytest.approx(dot, rel=.02, abs=1e-4)
-
-
-def test_target_gradient_unequal_lengths_and_interrupted_resume():
-    from picking.pr_selection.modeling.gradients import target_gradient
-
-    class Store:
-        state = None
-        interrupt_once = True
-
-        def load(self):
-            return copy.deepcopy(self.state)
-
-        def save(self, payload, step):
-            self.state = copy.deepcopy(payload)
-            if self.interrupt_once:
-                self.interrupt_once = False
-                raise InterruptedError('after a committed gradient checkpoint')
-
-    torch.manual_seed(10)
-    initial = TinyLM(dropout=.2)
-    rows = [
-        {'id': 'a', 'input_ids': [1, 2, 3, 4], 'target_runs': [[1, 4]], 'prediction_tokens': 3},
-        {'id': 'b', 'input_ids': [3, 5, 7], 'target_runs': [[2, 3]], 'prediction_tokens': 1},
-        {'id': 'c', 'input_ids': [6, 8, 2, 9, 4], 'target_runs': [[2, 5]], 'prediction_tokens': 3},
-    ]
-    store = Store()
-    cfg = {'scoring': {'gradient_save_documents': 1}}
-    torch.manual_seed(1234)
-    with pytest.raises(InterruptedError):
-        target_gradient(Engine(copy.deepcopy(initial), chunk_size=2), rows, store, cfg)
-    resumed = Engine(copy.deepcopy(initial), chunk_size=2)
-    actual = target_gradient(resumed, rows, store, cfg)
-    expected = copy.deepcopy(initial)
-    torch.manual_seed(1234)
-    total = 0.
-    for row in rows:
-        ids = torch.tensor([row['input_ids']])
-        hidden = expected.model(inputs_embeds=expected.model.embed_tokens(ids)).last_hidden_state
-        selected = [i for a, b in row['target_runs'] for i in range(a, b)]
-        total = total + F.cross_entropy(expected.lm_head(hidden[0, [i-1 for i in selected]]),
-                                        ids[0, selected], reduction='sum')
-    (total/7).backward()
-    for name, parameter in expected.named_parameters():
-        torch.testing.assert_close(actual[name], parameter.grad, atol=1e-6, rtol=2e-5)
-    frozen = {name: value.clone() for name, value in actual.items()}
-    resumed.backward(rows[0], 'guidance')
-    for name in actual:
-        torch.testing.assert_close(actual[name], frozen[name], atol=0, rtol=0)
-
-
-def test_six_score_artifacts_end_to_end(tmp_path, monkeypatch):
+def test_four_score_artifacts_end_to_end(tmp_path, monkeypatch):
     import pandas as pd
     from picking.common import file_hash
     from picking.pr_selection.artifacts import CheckpointStore
@@ -152,6 +81,7 @@ def test_six_score_artifacts_end_to_end(tmp_path, monkeypatch):
     monkeypatch.setenv('DATA_PICKING_CHECKPOINT_IO', 'filesystem')
     cfg = load_config('configs/pr_selection.yaml')
     cfg.update(run_id='tiny-end-to-end', artifact_root=str(tmp_path/'artifacts'), runtime_root=str(tmp_path/'runtime'))
+    cfg.pop('probe_from_run', None)
     cfg['model']['name'] = 'test/TinyLM'
     cfg['probe'].update(epochs=2, documents_per_step=2, learning_rate=.003)
     q = [{'id': 'q', 'input_ids': [1, 2, 3, 4], 'target_runs': [[2, 4]], 'prediction_tokens': 2}]
@@ -165,14 +95,14 @@ def test_six_score_artifacts_end_to_end(tmp_path, monkeypatch):
     pd.DataFrame(candidates).to_parquet(folder/'data/candidates.parquet', index=False)
     torch.manual_seed(3)
     engine = Engine(TinyLM(), chunk_size=2)
-    score_m0(engine, q, candidates, cfg)
+    score_m0(engine, candidates, cfg)
     probe_store = CheckpointStore(cfg, 'probe', file_hash(folder/'data/guidance.parquet'))
     train_probe(engine, q, probe_store, cfg)
     score_m1(engine, candidates, cfg)
     frame = combine(cfg, candidates)
     assert len(frame) == 6
     assert set(frame.objective) == {'full_text', 'answer_only'}
-    assert json.loads((folder/'SCORING_COMPLETED.json').read_text())['distributions'] == 6
+    assert json.loads((folder/'SCORING_COMPLETED.json').read_text())['distributions'] == 4
     for objective, group in frame.groupby('objective'):
         assert set(group.id) == {f'fixture/repo#{i}' for i in range(3)}
         for name in cfg['methods']:

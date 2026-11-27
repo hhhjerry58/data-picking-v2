@@ -146,7 +146,8 @@ def load_engine(cfg, gpu_ids):
     for p in model.parameters():
         p.requires_grad_(True)
     engine = Engine(model, cfg['model']['lm_head_chunk_tokens'], torch.bfloat16,
-                    cfg['model']['activation_offload_min_tokens'])
+                    cfg['model']['activation_offload_min_tokens'],
+                    score_backend=cfg.get('scoring', {}).get('attention_backend', 'default'))
     engine.device_map = device_map
     return engine
 
@@ -154,8 +155,9 @@ def load_engine(cfg, gpu_ids):
 class Engine:
     """One autograd graph, optionally pipelined across several explicitly allowed GPUs."""
 
-    def __init__(self, model, chunk_size=128, compute_dtype=None, offload_min_tokens=32768):
+    def __init__(self, model, chunk_size=128, compute_dtype=None, offload_min_tokens=32768, score_backend='default'):
         self.model = model
+        self.score_backend = score_backend
         self.chunk_size = chunk_size
         self.compute_dtype = compute_dtype
         self.offload_min_tokens = offload_min_tokens
@@ -182,7 +184,9 @@ class Engine:
         return hidden
 
     def losses(self, record, objectives):
-        with torch.no_grad():
+        from torch.nn.attention import SDPBackend, sdpa_kernel
+        context = sdpa_kernel(SDPBackend.FLASH_ATTENTION) if self.score_backend == 'flash' and 'guidance' not in objectives else nullcontext()
+        with torch.no_grad(), context:
             hidden = self.hidden(record, False)
             return {objective: chunked_head_loss(hidden, self.model.lm_head, record['input_ids'],
                        positions(record, objective), chunk_size=self.chunk_size,
@@ -195,37 +199,3 @@ class Engine:
         return chunked_head_loss(hidden, self.model.lm_head, record['input_ids'], positions(record, objective),
                                  denominator=denominator, backward=True, chunk_size=self.chunk_size,
                                  autocast_dtype=self.compute_dtype)
-
-    def gradient_statistics(self, reference):
-        dot = norm = 0.0
-        if set(reference) != set(self.parameters):
-            raise ValueError('Reference gradient parameter names differ')
-        for name, parameter in self.parameters.items():
-            if parameter.grad is None:
-                raise RuntimeError(f'Missing full-model gradient: {name}')
-            grad = parameter.grad.detach().reshape(-1)
-            target = reference[name].reshape(-1)
-            if target.shape != grad.shape:
-                raise ValueError('Reference gradient shape mismatch')
-            for offset in range(0, grad.numel(), 8*1024*1024):
-                g = grad[offset:offset+8*1024*1024].double()
-                q = target[offset:offset+8*1024*1024].to(g.device, dtype=torch.float64)
-                dot += float(torch.dot(g, q))
-                norm += float(torch.dot(g, g))
-        if not torch.isfinite(torch.tensor([dot, norm], dtype=torch.float64)).all():
-            raise FloatingPointError('Nonfinite gradient statistic')
-        return dot, norm**0.5
-
-    def copy_gradients(self, device='cpu'):
-        result = {}
-        for name, p in self.parameters.items():
-            if p.grad is None:
-                raise RuntimeError(f'Missing parameter gradient: {name}')
-            result[name] = p.grad.detach().to(device=device, dtype=torch.float32).clone()
-        return result
-
-    def install_gradients(self, gradients):
-        if set(gradients) != set(self.parameters):
-            raise ValueError('Gradient checkpoint parameter names differ')
-        for name, p in self.parameters.items():
-            p.grad = gradients[name].to(p.device, dtype=p.dtype)

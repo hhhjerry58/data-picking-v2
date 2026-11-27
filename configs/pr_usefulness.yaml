@@ -1,0 +1,37 @@
+run_id: pr-usefulness-1m-32steps-v1-20261126
+source_run: pr-lossdrop-qwen35-9b-v1-20261126
+artifact_root: /mnt/tianzhu_hot/data-picking-v2
+runtime_root: /dev/shm/data-picking-v2-pr
+analysis_root: /home/v-guanhechen/experiments/data-picking
+
+objectives: [answer_only, full_text]
+arms: [top_absolute, top_relative, random, bottom_absolute]
+selection:
+  input_token_budget: 1000000
+  random_seed: 42
+training:
+  steps: 32
+  seed: 42
+  learning_rate: 0.000002
+  betas: [0.9, 0.95]
+  adam_epsilon: 0.00000001
+  weight_decay: 0.0
+  warmup_steps: 2
+  max_grad_norm: 1.0
+  optimizer_cpu_threads: 16
+  save_steps: 16
+  keep_checkpoints: 2
+  save_optimizer: true
+  auto_resume: true
+  normalization: global_arm_target_tokens_per_step
+evaluation:
+  expected_tasks: 53
+  expected_records: 135
+  objective: guidance
+  primary_metric: token_mean_nll
+  bootstrap_samples: 10000
+  bootstrap_seed: 20261126
+  persist_rows: 8
+runtime:
+  gpus_per_worker: 2
+  max_workers: 2

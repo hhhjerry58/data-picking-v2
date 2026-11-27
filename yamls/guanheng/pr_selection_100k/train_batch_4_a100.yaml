@@ -1,0 +1,93 @@
+# 在仓库根目录、已登录的 AMLT 环境中提交：
+# amlt run yamls/guanheng/pr_selection_100k/train_batch_4_a100.yaml pr100k-train_batch_4_a100-v1 -y --sla Premium
+
+description: 'Qwen3.5-9B PR selection: 8 independent 8xA100 jobs, 100 updates, checkpoint every 5'
+target:
+  service: sing
+  name: turing-codex-westus3
+  workspace_name: Workspace_NLC
+environment:
+  image: 6eoye/verl2:v0.3.0-vllm0112-cu128
+code:
+  local_dir: $CONFIG_DIR/../../..
+  ignore:
+  - .git/
+  - .venv/
+  - .venv-pr/
+  - .cache/
+  - .runtime/
+  - .pytest_cache/
+  - '**/__pycache__/'
+  - '**/*.pyc'
+  - .env
+  - .env.*
+  - blob/
+storage:
+  tianzhu:
+    storage_account_name: msranlpinternhot
+    container_name: tianzhu
+jobs:
+- name: answer_only-random-s42
+  identity: managed
+  priority: high
+  sku: 1xG8-A100
+  process_count_per_node: 1
+  command:
+  - python3 scripts/pr_cluster_bootstrap.py --bundle /mnt/tianzhu/data-picking-v2/cluster_bundles/pr-100k-a100-100step-v1-20261126
+    --job answer_only-random-s42 --mode train
+- name: answer_only-random-s43
+  identity: managed
+  priority: high
+  sku: 1xG8-A100
+  process_count_per_node: 1
+  command:
+  - python3 scripts/pr_cluster_bootstrap.py --bundle /mnt/tianzhu/data-picking-v2/cluster_bundles/pr-100k-a100-100step-v1-20261126
+    --job answer_only-random-s43 --mode train
+- name: answer_only-random-s44
+  identity: managed
+  priority: high
+  sku: 1xG8-A100
+  process_count_per_node: 1
+  command:
+  - python3 scripts/pr_cluster_bootstrap.py --bundle /mnt/tianzhu/data-picking-v2/cluster_bundles/pr-100k-a100-100step-v1-20261126
+    --job answer_only-random-s44 --mode train
+- name: answer_only-random-s45
+  identity: managed
+  priority: high
+  sku: 1xG8-A100
+  process_count_per_node: 1
+  command:
+  - python3 scripts/pr_cluster_bootstrap.py --bundle /mnt/tianzhu/data-picking-v2/cluster_bundles/pr-100k-a100-100step-v1-20261126
+    --job answer_only-random-s45 --mode train
+- name: answer_only-random-s46
+  identity: managed
+  priority: high
+  sku: 1xG8-A100
+  process_count_per_node: 1
+  command:
+  - python3 scripts/pr_cluster_bootstrap.py --bundle /mnt/tianzhu/data-picking-v2/cluster_bundles/pr-100k-a100-100step-v1-20261126
+    --job answer_only-random-s46 --mode train
+- name: answer_only-random-s47
+  identity: managed
+  priority: high
+  sku: 1xG8-A100
+  process_count_per_node: 1
+  command:
+  - python3 scripts/pr_cluster_bootstrap.py --bundle /mnt/tianzhu/data-picking-v2/cluster_bundles/pr-100k-a100-100step-v1-20261126
+    --job answer_only-random-s47 --mode train
+- name: answer_only-random-s48
+  identity: managed
+  priority: high
+  sku: 1xG8-A100
+  process_count_per_node: 1
+  command:
+  - python3 scripts/pr_cluster_bootstrap.py --bundle /mnt/tianzhu/data-picking-v2/cluster_bundles/pr-100k-a100-100step-v1-20261126
+    --job answer_only-random-s48 --mode train
+- name: answer_only-random-s49
+  identity: managed
+  priority: high
+  sku: 1xG8-A100
+  process_count_per_node: 1
+  command:
+  - python3 scripts/pr_cluster_bootstrap.py --bundle /mnt/tianzhu/data-picking-v2/cluster_bundles/pr-100k-a100-100step-v1-20261126
+    --job answer_only-random-s49 --mode train

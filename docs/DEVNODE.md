@@ -1,7 +1,7 @@
 # 在 devnode 运行与恢复实验
 
-当前主实验为 [PR 六分布评分](PR_SELECTION.md)，使用 `.venv-pr`；
-跨节点 A100 评分及 Windows 提交见 [PR_PARALLEL.md](PR_PARALLEL.md)。
+当前主实验为 [PR 四分布评分](PR_SELECTION.md)，使用 `.venv-pr`；
+本地单卡副本并行、M1 导入与恢复见 [PR_PARALLEL.md](PR_PARALLEL.md)。
 以下内容保留用于 `scripts/domain_retrieval.py` 对应的已完成 pilot 恢复，
 协议见 [DOMAIN_RETRIEVAL.md](DOMAIN_RETRIEVAL.md)，参数见 [domain_retrieval.yaml](../configs/domain_retrieval.yaml)。
 

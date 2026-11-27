@@ -40,7 +40,7 @@ def main():
                           'probe': cfg['probe'], 'distributions': len(cfg['methods'])*len(cfg['objectives']), 'test_losses': False}, indent=2))
         return
     locks, gpu_ids = [], []
-    if args.stage in ('preflight', 'probe', 'score'):
+    if args.stage in ('preflight', 'score') or (args.stage == 'probe' and not cfg.get('probe_from_run')):
         raw = os.environ.get('DATA_PICKING_GPU_IDS', '')
         if not raw.strip():
             parser.error('Set DATA_PICKING_GPU_IDS explicitly')

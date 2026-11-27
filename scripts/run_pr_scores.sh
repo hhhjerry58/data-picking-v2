@@ -37,18 +37,18 @@ pr_status running
 pr_frozen="$pr_run/effective_config.json"
 # probe/score also verify the preflight identity, so an outdated marker cannot
 # authorize a different implementation or configuration.
-if [[ ! -f "$pr_run/PREFLIGHT_PASSED.json" ]]; then
+pr_imported="$({ .venv-pr/bin/python - "$pr_frozen" <<'PYIMPORT'
+import json,sys
+print('yes' if json.load(open(sys.argv[1])).get('probe_from_run') else 'no')
+PYIMPORT
+} )"
+if [[ "$pr_imported" == no && ! -f "$pr_run/PREFLIGHT_PASSED.json" ]]; then
   pr_stage=preflight
   pr_status running
   .venv-pr/bin/python -u scripts/pr_selection.py preflight --config "$pr_frozen" > "$pr_run/logs/preflight.log" 2>&1
 fi
 for pr_stage in probe score analyze; do
   pr_status running
-  if [[ "$pr_stage" == analyze ]]; then
-    flock /home/v-guanhechen/experiments/.index.lock \
-      .venv-pr/bin/python -u scripts/pr_selection.py "$pr_stage" --config "$pr_frozen" > "$pr_run/logs/$pr_stage.log" 2>&1
-  else
-    .venv-pr/bin/python -u scripts/pr_selection.py "$pr_stage" --config "$pr_frozen" > "$pr_run/logs/$pr_stage.log" 2>&1
-  fi
+  .venv-pr/bin/python -u scripts/pr_selection.py "$pr_stage" --config "$pr_frozen" > "$pr_run/logs/$pr_stage.log" 2>&1
 done
 pr_status completed

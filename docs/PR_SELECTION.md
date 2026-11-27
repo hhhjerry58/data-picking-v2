@@ -1,115 +1,70 @@
-# Qwen3.5-9B：PR 六个评分分布
+# Qwen3.5-9B：PR 四个 loss-drop 分布
 
-第一阶段只生成实际评分及分布，随后再讨论选数策略。没有开发集，没有 T loss，
-没有最终 PR 续训。原有 arXiv pilot 的实现及数值身份保持不变。
+第一阶段仅计算分数并分析分布，再讨论选数。没有开发集、T loss 或最终 PR 续训。
 
-## 固定协议
+## 固定数据与目标
 
 - M0：`Qwen/Qwen3.5-9B`，revision `c202236235762e1c871ad0ccb60c8ee5ba337b9a`。
-- 只加载完整语言模型参数，包括 embedding 和输出 head；视觉参数不加载、不更新。
-- FP32 参数、梯度与 AdamW 状态，BF16 矩阵计算，FP32 token cross entropy，FP64 梯度内积累加。
-- 保留轨迹全部历史，原生 262,144 窗口，不做位置扩展。使用 Qwen3.5 官方模板。
+- 使用全部语言模型参数，视觉模块不加载。FP32 参数、BF16 矩阵计算、FP32 token cross entropy。
 - Q/T 按 DeepSWE 任务固定 hash 划分，各 53 个任务；同任务所有 trial 同侧。
-- Q loss 沿用 Wenhui 的语义字段：参考动作正文、函数名、参数键和值；历史及工具结果只作条件。
-  不评分格式外壳，不含独立 reasoning，使用目标 token 平均 NLL，不使用 BPB。
-- P：同一批 20,000 条唯一 PR，来源 `base/8k/git_diff`。按 Qwen tokenizer 检查完整输入 ≤8192，
-  不截断；两种 mask 共有输入，全文从第 2 个 token 预测，答案 mask 从唯一 `## Answer` 后开始。
-- `score` 质量字段不进入任何方法。按 PR ID、query ID、完整文本身份去重；
-  排除轨迹中显式 GitHub PR/issue 引用及可配置额外排除清单。语义补丁重合尚不能由这些检查完全排除。
+- Q 的条件保留完整历史，监督沿用 Wenhui 的动作正文、函数名、参数键和值；不计独立 reasoning 或格式外壳。
+- 使用目标 token 平均 NLL，不使用 BPB。
+- P 固定为同一批 20,000 条 `base/8k/git_diff` PR，完整输入不超过 8,192 tokens，不截断。
+- 全文和答案目标共用原始 `text` 的输入 token；全文从第 2 个 token 预测，答案从唯一 `## Answer` 后开始。
+- PR 的质量字段不进入评分，也不充当训练效用 ground truth。
 
-顶层 PR JSON 是分片路径清单。当前先固定随机选择最多 64 个来源分片，
-在其全部可用去重记录上用 ID-hash reservoir 选 20,000 条；这是固定子池实验，
-不声称对整个 PR 仓库做了均匀采样。数量不足时报错，调整分片预算须使用新 run_id。
+候选池先固定选择最多 64 个来源分片，再按 ID-hash reservoir 取 20k。该池不是整个 PR 仓库的均匀样本。
+按 PR ID、query ID、完整文本去重，排除轨迹显式引用的 GitHub PR/issue；语义补丁重合仍未完全检查。
+两种目标始终使用相同候选记录。
 
-## 方法与固定 probe
+## 两种方法
 
-每条 PR 的当前目标平均 NLL 为 Lx。绝对分数是 Lx(M0)−Lx(M1)，
-相对分数再除以 max(Lx(M0),1e−8)。两种监督目标共用同一个 M1。
+每种监督目标分别计算 `Lx(M0)` 和 `Lx(M1)`：
 
-GradDot 在 M0 对全部语言模型参数计算 gQ·gx，不投影、不选层、不做 cosine 归一化。
-gQ 按 Q 的所有有效目标 token 统一归一化；gx 按该 PR 当前监督目标的 token 数归一化。
-候选梯度逐条计算后丢弃，只保留内积和范数。Q 梯度保存完整恢复状态。
+- 绝对下降量：`Lx(M0) - Lx(M1)`。
+- 相对下降量：`[Lx(M0) - Lx(M1)] / max(Lx(M0), 1e-8)`。
 
-probe 默认仅遍历 Q 一轮，每步累积 4 条记录。梯度分母为
-`Q 总有效 tokens × 当步记录数 / Q 记录数`，使均匀记录 minibatch 对全局 token NLL
-给出无偏估计，避免与 GradDot 的 Q 权重不同；日志另报告当步实际 token 平均 NLL。
-AdamW：LR 2e−6，betas=(0.9,0.95)，eps=1e−8，weight decay=0，warmup=2 步，clip=1。
-这是预先固定的保守配方，不承诺最佳；不能用 T 调参或选择 M1。
-保存 optimizer、scheduler、RNG 和记录游标，自动恢复，保留最近两个完整 checkpoint。
-FP32 master 参数和 Adam 状态放在 CPU，所有语言模型参数均更新并同步回 GPU。
-checkpoint 的模型值与 CPU master 完全相同，恢复时先重建 master，再恢复 optimizer。
+两种方法乘两个监督目标，共四个分布。保留负值，不裁剪或据此自动选数。
+候选阶段仅做前向，每个模型的主体 forward 共享全文与答案两个 loss mask。
 
-## 代码职责
+## 固定 M1 与历史导入
 
-| 路径 | 职责 |
-|---|---|
-| `data/` | PR 解析、任务划分、共同候选池；T 仅保留清单 |
-| `modeling/masks.py` | 原生模板语义标记、精确往返核对、字节到 token 区间 |
-| `modeling/loss.py` | 分块词表 loss、完整上下文反向的链式法则 |
-| `modeling/qwen35.py` | 固定权重、文本参数、多 GPU 模型并行与 FLA |
-| `modeling/gradients.py` | Q 梯度累积及恢复 |
-| `methods/grad_dot/` | GradDot 准备、逐条方法评分 |
-| `training.py` | 固定 probe 与 optimizer/RNG 恢复 |
-| `scoring.py` | 配对缓存、三种方法输出；无选数策略 |
-| `artifacts.py` | 独占写入、身份检查、checkpoint 和逐行评分恢复 |
-| `diagnostics.py`、`notebooks/score_distributions.ipynb` | 统计与实际 notebook 图表 |
+M1 由 Q 微调得到，两种监督目标共用同一个 M1。当前配置用 `probe_from_run` 引用已经完成的 v6 probe。
+导入器重新计算原源码快照、原配置和固定依赖的身份，检查 Q 数据与训练参数，核对 checkpoint
+指纹、manifest、完整文件校验和及完成状态。导入信息记录到新 run 的 `imported_probe.json`。
+旧 run 的配置、checkpoint、结果和指纹保持不变。
 
-普通训练后端会保存完整序列×词表 logits，长历史下开销过大。这里逐块计算输出 head 的
-loss 和 hidden adjoint，再一次性反传完整上下文图。不是 detach 历史的近似梯度。
-GPU 按层划分，FP32 模型参数分布在显式允许的 GPU 上，optimizer 使用 CPU offload。尚需真实最长样例通过预检，
-不能把 CPU 检查或 tokenizer 长度检查当作显存验证。
-超过 32K 的反向使用 CPU activation offload，只搬运保存的激活，不截断历史或梯度。
-预检在 optimizer 对应设备保留两份 FP32 Adam moment，并预先分配完整累计梯度，
-防止只测第一个 microbatch 而低估峰值。
+如果不设置 `probe_from_run`，则执行新 probe：Q 一轮，每步累积 4 条，梯度分母采用
+`Q 总有效 tokens × 当步记录数 / Q 记录数`，使均匀记录采样对应全局 token 目标。
+AdamW LR 2e-6，betas=(0.9,0.95)，eps=1e-8，weight decay=0，warmup=2，clip=1。
+FP32 master 和 Adam 状态在 CPU，每次保存完整 optimizer、scheduler、RNG、游标，自动恢复。
+全参数训练用完整历史，超过 32K 的反向启用 activation offload，不截断历史或梯度。
 
-## 环境和阶段入口
+## 数值后端
 
-`scripts/setup_pr_env.sh` 创建 `.venv-pr`，通过只读 Python 路径复用旧 `.venv` 的 Torch
-和分析依赖，独立安装固定版本的 Transformers/FLA。不会卸载或升级旧环境。
-H100 上使用 FLA 支持的 TileLang 后端，避免 Triton 3.6 的已知 gated backward 错误；
-同时固定 causal-conv1d。模型大权重从持久目录校验复制到 RAM mirror 后加载。
+`scoring.attention_backend` 支持 `default` 与 `flash`，只影响候选 forward；新 probe 保留原训练后端。
+默认值沿用原 SDPA/cuDNN。Flash 的首次长度开销更小，但与 cuDNN 的 loss-drop 存在可测差异，
+因此更换后端必须使用新 run，并重新计算 M0/M1，不能混用旧缓存。
+线性注意力使用固定 FLA，训练保留 TileLang 和 causal-conv1d 依赖；旧 `.venv` 不升级。
+
+## 运行
 
 ```bash
-bash scripts/setup_pr_env.sh
 .venv-pr/bin/python scripts/pr_selection.py check
-.venv-pr/bin/python scripts/pr_selection.py prepare
-DATA_PICKING_GPU_IDS=0,1,2,3 .venv-pr/bin/python scripts/pr_selection.py preflight
-DATA_PICKING_GPU_IDS=0,1,2,3 .venv-pr/bin/python scripts/pr_selection.py probe
-DATA_PICKING_GPU_IDS=0,1,2,3 .venv-pr/bin/python scripts/pr_selection.py score
-.venv-pr/bin/python scripts/pr_selection.py analyze
-```
-
-完成有效配置检查后，也可使用可恢复的第一阶段串行入口：
-
-```bash
 DATA_PICKING_GPU_IDS=0,1,2,3 bash scripts/run_pr_scores.sh configs/pr_selection.yaml
 ```
 
-该入口使用已冻结的 JSON 配置继续各阶段，状态在 `pipeline_status.json`，
-子阶段状态在 `status.json`，日志在 `logs/`。它不会进入 PR 选数或续训。
+流水线顺序为 prepare → 导入 M1（或 preflight → probe）→ 多卡纯前向 score → analyze。
+原数据可通过 `prepared_from_run` 复用，但数据实现签名、tokenizer、采样配置必须一致。
+新数值实现使用新 run_id；不得改旧配置来绕过身份检查。
 
-`preflight` 必须验证最长 Q 的完整反向和两种 PR mask；`probe`、`score` 检查同一配置及代码身份的
-通过标记。配置变化使用 `--run-id` 指定新运行，不能复用不同身份的 checkpoint 或评分缓存。
-只使用明确允许且空闲的卡；同一 run 由单节点独占写入，不自动接管其他节点。
+代码职责：`data/` 处理记录与 mask，`modeling/` 提供模型和 loss，`training.py` 执行新 Q probe，
+`imports.py` 导入历史 M1，`scoring.py` 计算及配对 loss，`parallel.py` 管理单卡副本，
+`diagnostics.py` 和 `notebooks/score_distributions.ipynb` 生成实际分析。
 
-产物在 `/mnt/tianzhu_hot/data-picking-v2/runs/<run_id>/`：
-`data/`、`pretraining/probe/`、`pretraining/target-gradient/`、`scores/<objective>/`、
-`methods/<method>/<objective>/scores.parquet`。每条候选分数可独立恢复。
-全部六个评分完成后，真实实验分析才归档到 `/home/v-guanhechen/experiments/`；
-notebook 直接包含绘图代码，并执行、保存内嵌输出。
-`prepared_from_run` 可以复用另一运行已经完成的数据集，但必须匹配任务划分、采样配置、
-tokenizer、模板及数据代码身份，并检查复制后的文件完整性。新数值后端使用新的 run_id；
-不会修改原数据运行或绕过 checkpoint 身份检查。运行状态见 `status.json`，
-每个数值运行在 `source/` 保存实际代码快照。
+评分文件位于 `runs/<run_id>/workers/<worker>/scores/<objective>/m0.jsonl` 与 `m1.jsonl`。
+合并后为 `scores/paired_scores.parquet`，完成标志为 `SCORING_COMPLETED.json`。
+详细运行与恢复见 [本地并行说明](PR_PARALLEL.md)。
 
-分布保留负值和极端值，报告分位数、正负比例、ECDF、长度关系、排名相关性和累计 token 曲线。
-分布形态不是训练效用 ground truth。没有选数规则与续训预算时不自动进入下一阶段。
-
-## 针对性验证
-
-```bash
-.venv/bin/python -m pytest -q tests/pr_selection
-```
-
-CPU 检查覆盖完整上下文的梯度、归一化、GradDot 方向、同输入双 mask、任务隔离、
-不完整评分行恢复、optimizer 和数据游标续接。真实 GPU 预检使用上面的显式分卡命令。
+分析保存到 `/home/v-guanhechen/experiments/data-picking/`，图由 notebook 单元生成并保存内嵌输出。
+检查分布、长度关系和方法排序相关性；分布本身不能证明在独立 T 上的训练收益。

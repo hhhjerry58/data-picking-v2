@@ -1,6 +1,8 @@
 # 项目范围
 
-- 当前主实验是 Qwen3.5-9B 的 PR 六个评分分布，协议见 `docs/PR_SELECTION.md`，配置见 `configs/pr_selection.yaml`；第一阶段不选数、不继续训练 PR、不计算 T loss。
+- 20k PR 四个 loss-drop 分布已完成。当前工作为本地 H100 扩池并评分 100k，以及准备 32 组单节点八卡 A100 实验；集群由用户自行提交。协议见 `docs/PR_CLUSTER.md`，配置见 `configs/pr_selection_100k.yaml` 与 `configs/pr_cluster.yaml`。
+- 原八组小预算实验已按用户要求暂停，不得自行恢复；历史配置、结果和 checkpoint 身份保留。
+- 集群任务 YAML 统一放在 `yamls/guanheng/<experiment>/`，沿用 clone 仓库后直接 `amlt run` 的提交方式，不要求用户下载额外提交 ZIP。
 - 各选数方法放在独立的 `methods/<name>/` 目录，新实验公共实现位于 `src/picking/pr_selection/`。`src/picking/domain_retrieval/` 保留已完成 arXiv pilot 的数值实现及恢复身份。
 - Qwen3.5 使用 `.venv-pr`；保留旧 `.venv` 的固定依赖。新增逻辑使用新的 run_id，不改写历史实验。
 - 项目讨论与 review 文档使用中文。
@@ -13,6 +15,7 @@
 
 - 除非用户明确要求，`/home/v-guanhechen/experiments/` 只保存实际训练实验的分析。讨论解释、文献调研、baseline 建议、实现方案和源码快照不自动放入该目录；普通对话也不默认创建归档文档。
 - 训练实验分析保存到 `/home/v-guanhechen/experiments/`；`experiments` 指这个绝对目录。
+- 本项目的分析集中放在 `/home/v-guanhechen/experiments/data-picking/`，维护该子目录索引及 experiments 总索引；历史实验配置与 checkpoint 身份不因归档位置变化而改写。
 - 新分析目录使用 `YYYY-MM-DD_HH-MM-<topic>/`，时间为 `America/Los_Angeles`；同一分析可复用目录。
 - 报告、图表、统计、复现 notebook 和分析专用采集 helper 放在同一分析目录。
 - 绘图代码放在 `.ipynb` 单元中，并执行、保存内嵌输出；不使用独立 `.py` 绘图脚本。

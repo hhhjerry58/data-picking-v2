@@ -60,7 +60,7 @@ def train_probe(engine, guidance, store, cfg, *, stop_after_steps=None):
         denominator = sum(int(row['prediction_tokens']) for row in batch)
         # With uniformly sampled records, a fixed expected token denominator
         # makes each minibatch an unbiased estimator of the SAME global token
-        # objective used for gQ. Variable batch lengths must not reweight Q.
+        # objective over Q. Variable batch lengths must not reweight tasks.
         gradient_denominator = sum(int(row['prediction_tokens']) for row in guidance) * len(batch) / len(guidance)
         engine.zero_grad()
         total_loss = 0.

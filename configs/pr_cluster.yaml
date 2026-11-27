@@ -1,0 +1,38 @@
+campaign: pr-100k-a100-100step-v1-20261126
+pool_run: pr-lossdrop-qwen35-9b-100k-v1-20261126
+artifact_root: /mnt/tianzhu_hot/data-picking-v2
+bundle_prefix: data-picking-v2/cluster_bundles/pr-100k-a100-100step-v1-20261126
+output_prefix: data-picking-v2/runs/pr-100k-a100-100step-v1-20261126
+storage_account: msranlpinternhot
+storage_container: tianzhu
+runtime_archive: /tmp/pr-runtime-v2.tar.gz
+expected_gpu: A100
+world_size: 8
+training:
+  steps: 100
+  global_input_tokens_per_step: 256000
+  input_budget_mode: nearest_whole_records
+  gradient_normalization: global_step_target_token_mean
+  learning_rate: 0.000002
+  betas: [0.9, 0.95]
+  epsilon: 0.00000001
+  weight_decay: 0.0
+  warmup_steps: 2
+  max_grad_norm: 1.0
+  parameter_dtype: float32
+  compute_dtype: bfloat16
+  optimizer_dtype: float32
+  head_chunk_tokens: 512
+checkpoint:
+  every_steps: 5
+  keep_all: true
+  save_optimizer: true
+  auto_resume: true
+evaluation:
+  steps: [0, 100]
+  objective: guidance
+  primary_metric: token_mean_nll
+  expected_tasks: 53
+  expected_records: 135
+random_seeds: [42, 43, 44, 45, 46, 47, 48, 49]
+selection_seed: 42

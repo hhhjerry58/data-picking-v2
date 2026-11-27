@@ -10,4 +10,3 @@
 | Embedding 检索 | 根据候选与目标样本的语义相似度选择；可另加 BM25 | 简单的相关性检索是否已经够用？ |
 | DSIR | 根据目标与候选池的特征分布做重要性重采样 | 分布匹配能否达到同样的训练收益？该论文包含继续预训练实验。 |
 | Gradient alignment / LESS | 利用候选梯度与目标梯度的关系估计效用 | 更直接的参数更新信息是否更有效？LESS 原始场景是 instruction tuning，需要适配。 |
-| GradDot | 在同一个 checkpoint 上，按目标梯度与候选梯度的未归一化内积 g_targetᵀg_x 降序选择 | 最简单的单 checkpoint 梯度对齐是否已经够用？ |

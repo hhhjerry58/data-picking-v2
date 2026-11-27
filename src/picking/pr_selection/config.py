@@ -11,7 +11,7 @@ import yaml
 from picking.common import REPO, digest, file_hash
 
 OBJECTIVES = ('full_text', 'answer_only')
-METHODS = ('absolute_loss_drop', 'relative_loss_drop', 'grad_dot')
+METHODS = ('absolute_loss_drop', 'relative_loss_drop')
 
 
 def load_config(path):
@@ -24,10 +24,10 @@ def load_config(path):
     for key in ('artifact_root', 'runtime_root', 'analysis_root'):
         if not Path(cfg[key]).is_absolute():
             raise ValueError(f'{key} must be absolute')
-    if cfg['analysis_root'] != '/home/v-guanhechen/experiments':
+    if cfg['analysis_root'] != '/home/v-guanhechen/experiments/data-picking':
         raise ValueError('Training analyses belong in /home/v-guanhechen/experiments')
-    if cfg['objectives'] != list(OBJECTIVES) or not set(METHODS) <= set(cfg['methods']):
-        raise ValueError('Phase one requires the paired objectives and all three core scores')
+    if cfg['objectives'] != list(OBJECTIVES) or cfg['methods'] != list(METHODS):
+        raise ValueError('Phase one requires the paired objectives and both loss-drop scores')
     if len(cfg['methods']) != len(set(cfg['methods'])):
         raise ValueError('Repeated scoring method')
     for name in cfg['methods']:
@@ -54,10 +54,14 @@ def load_config(path):
             raise ValueError(f'Invalid model.{key}')
     if cfg['probe']['save_steps'] < 1 or cfg['probe']['keep_checkpoints'] < 2:
         raise ValueError('Require positive checkpoint interval and at least two retained checkpoints')
-    if cfg['scoring']['gradient_save_documents'] < 1 or cfg['scoring']['journal_persist_rows'] < 1:
+    if cfg['scoring']['journal_persist_rows'] < 1:
         raise ValueError('Scoring persistence intervals must be positive')
     if cfg.get('prepared_from_run') and not re.fullmatch(r'[A-Za-z0-9_-]+', cfg['prepared_from_run']):
         raise ValueError('Invalid prepared-data source run')
+    if cfg['scoring']['attention_backend'] not in ('default', 'flash'):
+        raise ValueError('Unsupported scoring attention backend')
+    if cfg.get('probe_from_run') and (not re.fullmatch(r'[A-Za-z0-9_-]+', cfg['probe_from_run']) or cfg['probe_from_run'] == cfg['run_id']):
+        raise ValueError('Invalid probe source run')
     return cfg
 
 

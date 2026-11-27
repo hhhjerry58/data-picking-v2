@@ -1,8 +1,9 @@
-run_id: pr-scores-qwen35-9b-v6-20261125
+run_id: pr-lossdrop-qwen35-9b-v1-20261126
+probe_from_run: pr-scores-qwen35-9b-v6-20261125
 prepared_from_run: pr-data-qwen35-53q-20k-20261125
 artifact_root: /mnt/tianzhu_hot/data-picking-v2
 runtime_root: /dev/shm/data-picking-v2-pr
-analysis_root: /home/v-guanhechen/experiments
+analysis_root: /home/v-guanhechen/experiments/data-picking
 
 model:
   name: Qwen/Qwen3.5-9B
@@ -31,7 +32,7 @@ data:
   exclude_pr_ids_file: null
 
 objectives: [full_text, answer_only]
-methods: [absolute_loss_drop, relative_loss_drop, grad_dot]
+methods: [absolute_loss_drop, relative_loss_drop]
 
 probe:
   optimizer_device: cpu
@@ -52,6 +53,6 @@ probe:
   auto_resume: true
 
 scoring:
-  gradient_save_documents: 8
+  attention_backend: default
   journal_fsync_rows: 1
   journal_persist_rows: 32

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import fcntl
 import re
 import shutil
 import sys
@@ -39,7 +40,7 @@ def statistics(frame, methods=METHODS):
 def analyze(cfg):
     run = run_dir(cfg)
     if not (run / 'SCORING_COMPLETED.json').is_file():
-        raise ValueError('All six distributions require completed paired scoring')
+        raise ValueError('All four distributions require completed paired scoring')
     frame = pd.read_parquet(run / 'scores/paired_scores.parquet')
     pointer = run / 'latest_report.json'
     if pointer.exists():
@@ -56,7 +57,7 @@ def analyze(cfg):
     correlations = []
     for objective in OBJECTIVES:
         group = frame[frame.objective == objective]
-        corr = group[[*cfg['methods'], 'loss_before', 'input_tokens', 'prediction_tokens', 'gradient_norm']].corr(method='spearman')
+        corr = group[[*cfg['methods'], 'loss_before', 'input_tokens', 'prediction_tokens']].corr(method='spearman')
         corr.to_csv(folder / f'correlations_{objective}.csv')
     notebook = nbformat.read(REPO / 'notebooks/score_distributions.ipynb', as_version=4)
     manager = KernelManager(kernel_name='python3')
@@ -65,8 +66,8 @@ def analyze(cfg):
                    resources={'metadata': {'path': str(folder)}}).execute(cleanup_kc=True)
     nbformat.write(notebook, folder / 'score_distributions.ipynb')
     (folder / 'REPORT.md').write_text(
-        '# PR 六个评分分布\n\n'
-        f'评分运行：`{run}`。同一候选池，两种监督目标，三种方法。\n\n'
+        '# PR 四个评分分布\n\n'
+        f'评分运行：`{run}`。同一候选池，两种监督目标，两种方法。\n\n'
         '已完成指导集 probe 和候选评分；没有选数、PR 继续训练或测试集 loss。\n'
         '分布只能诊断候选信号，不能证明对独立目标测试集的训练效用。\n\n'
         '- [分布统计](distribution_statistics.csv)\n'
@@ -74,15 +75,19 @@ def analyze(cfg):
         '- [逐条分数](scores.parquet)\n'
         '- [有效配置](effective_config.json)\n\n'
         f'复现：在代码仓库运行 `.venv-pr/bin/python scripts/pr_selection.py analyze --config {run}/effective_config.json`。\n')
-    index = Path(cfg['analysis_root']) / 'README.md'
-    lines = index.read_text().rstrip().splitlines() if index.exists() else ['# 训练实验分析', '']
-    if not any(f']({folder.name}/)' in line for line in lines):
-        label = folder.name[:16].replace('_', ' ').rsplit('-', 1)
-        timestamp = label[0]+':'+label[1]
-        entry = f'| {timestamp} | [PR 六个评分分布]({folder.name}/) | [报告]({folder.name}/REPORT.md) · [Notebook]({folder.name}/score_distributions.ipynb) |'
-        existing = [i for i, line in enumerate(lines) if re.match(r'^\| \d{4}-\d{2}-\d{2} \d{2}:\d{2} \|', line)]
-        insert = next((i for i in existing if lines[i].split('|')[1].strip() > timestamp), existing[-1]+1 if existing else len(lines))
-        lines.insert(insert, entry)
-        index.write_text('\n'.join(lines)+'\n')
+    archive = Path(cfg['analysis_root'])
+    timestamp = folder.name[:16].replace('_', ' ')
+    timestamp = timestamp[:13] + ':' + timestamp[14:]
+    with (archive.parent/'.index.lock').open('a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        for index in (archive/'README.md', archive.parent/'README.md'):
+            relative = folder.relative_to(index.parent)
+            lines = index.read_text().rstrip().splitlines() if index.exists() else ['# 训练实验分析', '', '| 分析时间 | 实验 | 报告 |', '|---|---|---|']
+            if not any(f']({relative}/)' in line for line in lines):
+                entry = f'| {timestamp} | [PR 四个评分分布]({relative}/) | [报告]({relative}/REPORT.md) · [Notebook]({relative}/score_distributions.ipynb) |'
+                existing = [i for i, line in enumerate(lines) if re.match(r'^\| \d{4}-\d{2}-\d{2} \d{2}:\d{2} \|', line)]
+                insert = next((i for i in existing if lines[i].split('|')[1].strip() > timestamp), existing[-1]+1 if existing else len(lines))
+                lines.insert(insert, entry)
+                index.write_text('\n'.join(lines)+'\n')
     atomic_json(pointer, {'path': str(folder)})
     return folder

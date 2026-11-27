@@ -10,7 +10,6 @@ from picking.common import file_hash
 from .artifacts import CheckpointStore
 from .config import atomic_json, identity, run_dir
 from .modeling.qwen35 import load_engine
-from .scoring import combine, score_m0, score_m1
 from .training import train_probe
 
 
@@ -38,8 +37,7 @@ def preflight(cfg, gpu_ids):
     # A complete, long Q example is essential: a short synthetic test cannot
     # establish full-context backward feasibility.
     samples = [('guidance', min(guidance, key=lambda x: x['input_tokens'])),
-               ('guidance', max(guidance, key=lambda x: x['input_tokens'])),
-               ('full_text', candidates[0]), ('answer_only', candidates[0])]
+               ('guidance', max(guidance, key=lambda x: x['input_tokens']))]
     for objective, row in samples:
         # Later microbatches see all accumulated gradients already resident.
         for parameter in engine.parameters.values():
@@ -74,6 +72,9 @@ def require_preflight(cfg, gpu_ids):
 
 
 def probe(cfg, gpu_ids):
+    if cfg.get('probe_from_run'):
+        from .imports import import_probe
+        return import_probe(cfg)
     require_preflight(cfg, gpu_ids)
     guidance, _ = data(cfg)
     store = probe_store(cfg)
@@ -84,29 +85,5 @@ def probe(cfg, gpu_ids):
 
 
 def score(cfg, gpu_ids):
-    require_preflight(cfg, gpu_ids)
-    starting_identity = identity(cfg)
-    completed = run_dir(cfg) / 'SCORING_COMPLETED.json'
-    if completed.exists():
-        if json.loads(completed.read_text())['identity'] != identity(cfg):
-            raise RuntimeError('Completed scoring identity differs')
-        return
-    guidance, candidates = data(cfg)
-    store = probe_store(cfg)
-    if not (store.folder / 'COMPLETED.json').exists():
-        raise ValueError('Complete the fixed probe before paired scoring')
-    engine = load_engine(cfg, gpu_ids)
-    score_m0(engine, guidance, candidates, cfg)
-    if identity(cfg) != starting_identity:
-        raise RuntimeError('Implementation/environment changed while scoring M0')
-    state = store.load()
-    if not state['completed']:
-        raise ValueError('M1 checkpoint is not the fixed completed probe')
-    engine.model.load_state_dict(state['model'], strict=True)
-    del state
-    gc.collect()
-    torch.cuda.empty_cache()
-    score_m1(engine, candidates, cfg)
-    if identity(cfg) != starting_identity:
-        raise RuntimeError('Implementation/environment changed while scoring M1')
-    combine(cfg, candidates)
+    from .parallel import run
+    return run(cfg, gpu_ids)
