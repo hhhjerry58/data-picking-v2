@@ -92,6 +92,27 @@ amlt run yamls/guanheng/pr_selection_100k/train_batch_4_a100.yaml pr100k-batch4-
 
 ## 存储和旧 smoke 故障
 
+若两个 `ARCHIVE_VERIFIED` 之后，在执行 `/dev/shm/.../runtime/python/bin/python3.12` 时出现
+`PermissionError: [Errno 13] Permission denied`，应检查该节点的 `/dev/shm` 是否挂载为 `noexec`
+（可运行 `findmnt -T /dev/shm -o TARGET,OPTIONS`）。旧 bootstrap 只按容量选目录，可能把 runtime
+解压到禁止执行的共享内存挂载；`chmod +x` 无法解除挂载限制。
+
+bootstrap 现在将 runtime／代码与模型／checkpoint 暂存分开：runtime 优先选择 `/scratch`、`/tmp`，
+最后尝试可执行的 `/dev/shm`，要求至少 32 GiB 可用空间，并检查挂载标志和实际执行能力。
+Python 原生模块预检通过后，数据暂存依次尝试 `/dev/shm`、`/scratch`、`/tmp`，要求仍有 160 GiB；
+数据目录允许 `noexec`。临时编译目录、Triton 和 PyTorch 扩展缓存跟随可执行目录。
+日志中的 `BOOTSTRAP_EXECUTION_DIR`、`BOOTSTRAP_RUNTIME_READY` 和 `BOOTSTRAP_STAGING_DIR` 标明选择结果；
+不可用目录会打印 `BOOTSTRAP_ROOT_SKIPPED` 及原因。
+特殊节点可在 YAML 的 bootstrap 命令中追加 `--runtime-root /path/to/exec-disk --staging-root /path/to/data-disk`
+指定已存在的目录；显式指定的目录不满足要求时直接报错。
+
+这项修复只更新随 AMLT 上传的 `scripts/pr_cluster_bootstrap.py`，不改冻结的数值代码、runtime 包或协议。
+使用含修复的仓库代码重新提交即可，无需重新发布 bundle；建议使用新的 AMLT experiment 名：
+
+```bash
+amlt run yamls/guanheng/pr_selection_100k/smoke_a100.yaml pr100k-smoke-v1-retry1 -y --sla Premium
+```
+
 旧第一次失败是挂载路径读取 M1 分片的 `EIO`。新 bootstrap 对 runtime/code 的挂载读取增加有界重试和完整校验，
 模型、PR、T 和 checkpoint 则直接使用 Azure Blob API、分块传输、ETag 和校验和，不依赖 mmap 或大文件复制穿过 FUSE。
 集群现在只需要 M0、PR 和 T；M1 留在本地用于评分。
